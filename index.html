@@ -1,1 +1,611 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTC Movement Meter</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: #050511;
+            --color-surface: #101322;
+            --color-text: #f5f5f7;
+            --color-text-secondary: #a0a4c0;
+            --color-primary: #ff4b9a;
+            --color-primary-dark: #d3367b;
+            --color-success: #44ff88;
+            --color-danger: #ff4b6e;
+            --color-warning: #ffd447;
+            --color-info: #46c8ff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Press Start 2P', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: radial-gradient(circle at top, #15162b 0%, #050511 55%, #020109 100%);
+            color: var(--color-text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0 10px 0;
+            border-bottom: 3px solid var(--color-primary);
+            background: linear-gradient(90deg, #050511 0%, #111428 50%, #050511 100%);
+            box-shadow: 0 0 12px rgba(0, 0, 0, 0.7);
+        }
+
+        h1 {
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            color: var(--color-primary);
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+        }
+
+        .subtitle {
+            color: var(--color-text-secondary);
+            font-size: 0.7em;
+        }
+
+        header p { text-shadow: none; }
+
+        .update-indicator {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(68, 255, 136, 0.08);
+            color: var(--color-success);
+            border-radius: 0;
+            font-size: 0.55em;
+            font-weight: 600;
+            margin-left: 6px;
+            border: 1px solid var(--color-success);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--color-success);
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 4px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+            background: var(--color-surface);
+            padding: 16px;
+            border-radius: 0;
+            border: 2px solid #262a4a;
+            box-shadow: 0 0 14px rgba(0, 0, 0, 0.7);
+        }
+
+        .control-group { display: flex; flex-direction: column; }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.6em;
+            color: var(--color-text-secondary);
+        }
+
+        input[type="number"] {
+            padding: 10px 10px;
+            background: #050814;
+            border: 2px solid #262a4a;
+            border-radius: 0;
+            color: var(--color-text);
+            font-size: 0.7em;
+            outline: none;
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 6px rgba(255, 75, 154, 0.5);
+        }
+
+        button {
+            padding: 12px 12px;
+            background: var(--color-primary);
+            color: #050511;
+            border: 2px solid var(--color-primary-dark);
+            border-radius: 0;
+            font-weight: 700;
+            font-size: 0.7em;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.05s ease, box-shadow 0.2s ease;
+            grid-column: 1 / -1;
+            box-shadow: 0 0 10px rgba(255, 75, 154, 0.4);
+        }
+
+        button:hover {
+            background: var(--color-primary-dark);
+            box-shadow: 0 0 14px rgba(255, 75, 154, 0.7);
+        }
+
+        button:active {
+            transform: translateY(1px);
+            box-shadow: 0 0 6px rgba(255, 75, 154, 0.5);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--color-surface);
+            padding: 16px;
+            border-radius: 0;
+            border: 2px solid #262a4a;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.75);
+        }
+
+        .card h3 {
+            color: var(--color-text-secondary);
+            font-size: 0.6em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        .card-value {
+            font-size: 1.1em;
+            font-weight: 700;
+            margin-bottom: 4px;
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+        }
+
+        .card-subtext {
+            color: var(--color-text-secondary);
+            font-size: 0.6em;
+        }
+
+        .positive { color: var(--color-success); }
+        .negative { color: var(--color-danger); }
+        .neutral  { color: var(--color-warning); }
+
+        .indicators-section {
+            background: var(--color-surface);
+            padding: 18px;
+            border-radius: 0;
+            margin-bottom: 24px;
+            border: 2px solid #262a4a;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.75);
+        }
+
+        .indicators-section h2 {
+            margin-bottom: 14px;
+            font-size: 0.9em;
+            color: var(--color-info);
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+        }
+
+        .indicators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .indicator {
+            background: #050814;
+            padding: 12px;
+            border-radius: 0;
+            border: 2px solid #262a4a;
+        }
+
+        .indicator-name {
+            color: var(--color-text-secondary);
+            font-size: 0.55em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .indicator-value {
+            font-size: 1em;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .indicator-status {
+            font-size: 0.6em;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+        }
+
+        .prediction-section {
+            background: var(--color-surface);
+            padding: 18px;
+            border-radius: 0;
+            margin-bottom: 24px;
+            border: 2px solid #262a4a;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.75);
+        }
+
+        .prediction-section h2 {
+            margin-bottom: 14px;
+            font-size: 0.9em;
+            color: var(--color-warning);
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+        }
+
+        .prediction-card {
+            background: #050814;
+            padding: 14px;
+            border-radius: 0;
+            border: 2px solid #262a4a;
+            margin-bottom: 12px;
+        }
+
+        .timeframe {
+            color: var(--color-primary);
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.75em;
+        }
+
+        .prediction-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 0.6em;
+        }
+
+        .prediction-detail span:first-child {
+            color: var(--color-text-secondary);
+        }
+
+        .prediction-confidence {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #262a4a;
+        }
+
+        .confidence-bar {
+            background: #050814;
+            height: 6px;
+            border-radius: 0;
+            margin-top: 6px;
+            overflow: hidden;
+            border: 1px solid #262a4a;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-danger), var(--color-warning), var(--color-success));
+            transition: width 0.3s ease;
+        }
+
+        .chart-container {
+            background: var(--color-surface);
+            padding: 18px;
+            border-radius: 0;
+            margin-bottom: 24px;
+            border: 2px solid #262a4a;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.75);
+        }
+
+        .chart-container h2 {
+            margin-bottom: 14px;
+            font-size: 0.9em;
+            color: var(--color-info);
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+        }
+
+        .mini-chart {
+            height: 230px;
+            background: #050814;
+            border-radius: 0;
+            border: 2px solid #262a4a;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .analyst-section {
+            background: var(--color-surface);
+            padding: 18px;
+            border-radius: 0;
+            margin-bottom: 24px;
+            border: 2px solid #262a4a;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.75);
+        }
+
+        .analyst-section h2 {
+            margin-bottom: 14px;
+            font-size: 0.9em;
+            color: var(--color-primary);
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+        }
+
+        .forecast-item {
+            background: #050814;
+            padding: 12px;
+            border-radius: 0;
+            border: 2px solid #262a4a;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .forecast-name {
+            color: var(--color-text);
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 0.7em;
+        }
+
+        .forecast-range {
+            color: var(--color-text-secondary);
+            font-size: 0.6em;
+        }
+
+        .source-link {
+            color: var(--color-primary);
+            font-size: 0.55em;
+            font-weight: 600;
+            margin-top: 6px;
+            transition: all 0.2s ease;
+            text-decoration: underline;
+        }
+
+        .forecast-item:hover .source-link {
+            color: var(--color-primary-dark);
+            transform: translateX(2px);
+        }
+
+        .disclaimer {
+            background: rgba(10, 10, 20, 0.9);
+            border: 2px solid #262a4a;
+            padding: 14px;
+            border-radius: 0;
+            color: var(--color-text-secondary);
+            font-size: 0.55em;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 1.1em; }
+            .dashboard { grid-template-columns: 1fr; }
+            .indicators-grid { grid-template-columns: 1fr; }
+            .card-value { font-size: 1em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>₿ BTC Movement Meter <span class="update-indicator"><span class="loading"></span>Live</span></h1>
+            <p class="subtitle">Analiza technicznych wskaźników, sentymentu i prognoz ruchów ceny</p>
+            <p style="color: var(--color-text-secondary); font-size: 0.55em; margin-top: 10px;">
+                Ostatnia aktualizacja: <span id="lastUpdate">ładowanie...</span>
+            </p>
+        </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="currentPrice">Aktualna cena BTC ($)</label>
+                <input type="number" id="currentPrice" value="90605" min="0" step="0.01">
+            </div>
+            <div class="control-group">
+                <label for="daysAgo">Cena z dni temu ($)</label>
+                <input type="number" id="daysAgo" value="88000" min="0" step="0.01">
+            </div>
+            <div class="control-group">
+                <label for="volatility">Volatilność (0-100)</label>
+                <input type="number" id="volatility" value="65" min="0" max="100" step="1">
+            </div>
+            <div class="control-group">
+                <label for="rsi">RSI (0-100)</label>
+                <input type="number" id="rsi" value="65" min="0" max="100" step="1">
+            </div>
+            <button onclick="analyzeMarket()">Wykonaj Analizę</button>
+        </div>
+
+        <div class="dashboard">
+            <div class="card">
+                <h3>Aktualna Cena</h3>
+                <div class="card-value" id="priceDisplay">$90,605</div>
+                <div class="card-subtext">Bitcoin</div>
+            </div>
+            <div class="card">
+                <h3>Zmiana 24h</h3>
+                <div class="card-value" id="changeDisplay" class="positive">+2.97%</div>
+                <div class="card-subtext">vs 24 godziny temu</div>
+            </div>
+            <div class="card">
+                <h3>Trend</h3>
+                <div class="card-value" id="trendDisplay" class="positive">BULLISH</div>
+                <div class="card-subtext">Kierunek rynku</div>
+            </div>
+            <div class="card">
+                <h3>Siła Sygnału</h3>
+                <div class="card-value" id="signalStrength">78%</div>
+                <div class="card-subtext">Pewność predykcji</div>
+            </div>
+        </div>
+
+        <div class="disclaimer">
+            ⚠️ Wyłączenie odpowiedzialności: Niniejsza aplikacja jest narzędziem edukacyjnym do analizy technicznej.
+            Nie stanowi porad inwestycyjnych. Wszystkie prognozy są oparte na modelach matematycznych i mogą się różnić
+            od rzeczywistych ruchów cenowych. Zawsze przeprowadzaj własne badania przed podjęciem decyzji inwestycyjnych.
+        </div>
+
+        <div class="indicators-section">
+            <h2>Wskaźniki Techniczne</h2>
+            <div class="indicators-grid">
+                <div class="indicator">
+                    <div class="indicator-name">RSI (14)</div>
+                    <div class="indicator-value" id="rsiValue">65.54</div>
+                    <div class="indicator-status" id="rsiStatus">Neutralny (Brak Sygnału)</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-name">MACD</div>
+                    <div class="indicator-value" id="macdValue">880.88</div>
+                    <div class="indicator-status" id="macdStatus">Bycze (Powyżej Linii Sygnału)</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-name">Bollinger Bands</div>
+                    <div class="indicator-value" id="bbValue">1.10</div>
+                    <div class="indicator-status" id="bbStatus">Górna Granica</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-name">Volume (ATR)</div>
+                    <div class="indicator-value" id="atrValue">$2,360</div>
+                    <div class="indicator-status" id="atrStatus">Wysoka Zmienność</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-name">Fear &amp; Greed (BTC)</div>
+                    <div class="indicator-value" id="fgValue">--</div>
+                    <div class="indicator-status" id="fgStatus">Ładowanie...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="prediction-section">
+            <h2>Prognozy Krótkoterminowe</h2>
+            <div class="prediction-card">
+                <div class="timeframe">📍 1 Tydzień</div>
+                <div class="prediction-detail">
+                    <span>Cel Cena:</span>
+                    <strong id="week1Target">$98,500</strong>
+                </div>
+                <div class="prediction-detail">
+                    <span>Oczekiwana Zmiana:</span>
+                    <strong id="week1Change" class="positive">+8.7%</strong>
+                </div>
+                <div class="prediction-detail">
+                    <span>Scenariusz:</span>
+                    <strong id="week1Scenario">Kontynuacja wzrostu</strong>
+                </div>
+                <div class="prediction-confidence">
+                    <div style="font-size: 0.55em; color: var(--color-text-secondary); margin-bottom: 6px;">Pewność Prognozy</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="week1Confidence" style="width: 72%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="prediction-card">
+                <div class="timeframe">📍 1 Miesiąc</div>
+                <div class="prediction-detail">
+                    <span>Zakres Ceny:</span>
+                    <strong id="month1Target">$105,000 - $115,000</strong>
+                </div>
+                <div class="prediction-detail">
+                    <span>Oczekiwana Zmiana:</span>
+                    <strong id="month1Change" class="positive">+15-27%</strong>
+                </div>
+                <div class="prediction-detail">
+                    <span>Scenariusz:</span>
+                    <strong id="month1Scenario">Pushek w stronę oporu</strong>
+                </div>
+                <div class="prediction-confidence">
+                    <div style="font-size: 0.55em; color: var(--color-text-secondary); margin-bottom: 6px;">Pewność Prognozy</div>
+                    <div class="confidence-bar">
+                        <div class="confidence-fill" id="month1Confidence" style="width: 65%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="prediction-card">
+                <div class="timeframe">⚠️ Scenariusz Niedźwiedziego</div>
+                <div class="prediction-detail">
+                    <span>Poziom Wsparcia:</span>
+                    <strong id="bearishSupport">$85,000</strong>
+                </div>
+                <div class="prediction-detail">
+                    <span>Dalsze Wsparcie:</span>
+                    <strong id="bearishSupport2">$68,000 - $74,000</strong>
+                </div>
+                <div class="prediction-detail">
+                    <span>Spadek Ryzyka:</span>
+                    <strong class="negative">-25% od bieżącej ceny</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2>Symulacja Przewidywanego Ruchu</h2>
+            <div class="mini-chart" id="chart"></div>
+            <div style="text-align: center; margin-top: 10px; color: var(--color-text-secondary); font-size: 0.55em;">
+                Zielona linia = scenariusz byczy | Czerwona linia = scenariusz niedźwiedzi | Szara linia = aktualna cena
+            </div>
+        </div>
+
+        <div class="analyst-section">
+            <h2>Konsensus Analityków (Styczeń 2026)</h2>
+            <div class="forecast-item" onclick="openSource('https://www.reuters.com/technology/bitcoin-trading-near-150000-analysts-eye-higher-levels-2025-12-13/')">
+                <div class="forecast-name">Standard Chartered</div>
+                <div class="forecast-range">Prognoza na 2026: $150,000</div>
+                <div class="source-link">🔗 Przejdź do źródła</div>
+            </div>
+            <div class="forecast-item" onclick="openSource('https://coinshares.com/research/bitcoin-outlook-2026')">
+                <div class="forecast-name">CoinShares Research</div>
+                <div class="forecast-range">Zakres 2026: $120,000 - $170,000</div>
+                <div class="source-link">🔗 Przejdź do źródła</div>
+            </div>
+            <div class="forecast-item" onclick="openSource('https://www.sussex.ac.uk/research/')">
+                <div class="forecast-name">University of Sussex (Carol Alexander)</div>
+                <div class="forecast-range">Zakres: $75,000 - $150,000 (Średnia: $110,000)</div>
+                <div class="source-link">🔗 Przejdź do źródła</div>
+            </div>
+            <div class="forecast-item" onclick="openSource('https://coinlore.com/bitcoin')">
+                <div class="forecast-name">CoinLore</div>
+                <div class="forecast-range">Agresywna prognoza: $195,067 (108% wzrostu)</div>
+                <div class="source-link">🔗 Przejdź do źródła</div>
+            </div>
+            <div class="forecast-item" onclick="openSource('https://fundstrat.com/bitcoin-outlook')">
+                <div class="forecast-name">Fundstrat Global Advisors</div>
+                <div class="forecast-range">Cel długoterminowy: $400,000+</div>
+                <div class="source-link">🔗 Przejdź do źródła</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const COINGECKO_API =
+            'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true';
+        const FEAR_GREED_API = 'https://api.alternative.me/fng/?limit=1&format=json';
+
+        let priceHistory = [];
+        let autoUpdateInterval = null;
+
+        async function fetchBitcoinPrice() {
+            try {
+                const response = await fetch(COINGECKO_API);
+                const data = await response.json();
+                if (data.bitcoin) {
+                    return {
+                        price: data.bitcoin.usd,
+                        change24h: data.bitcoin.usd_24h_change,
+                        lastUpdated: new Date(data.bitcoin.last_updated_at * 1000)
+                    };
+                }
+            } catch (error) {
+                console.error('Błąd pobierania danych BTC:', error);
+            }
+            return null;
+        }
+
+        async function fetchFearGreed() {
+            t
 
